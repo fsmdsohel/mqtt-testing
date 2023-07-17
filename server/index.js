@@ -1,59 +1,77 @@
-var net = require("net");
-var mqttCon = require("mqtt-connection");
-var server = new net.Server();
+const net = require("net");
+const mqttConnection = require("mqtt-connection");
+const server = new net.Server();
+
+const clients = new Map(); // Map to store connected clients
 
 server.on("connection", function (stream) {
-  var client = mqttCon(stream);
-
-  // client connected
+  var client = mqttConnection(stream);
+  // Handle MQTT 'connect' event
   client.on("connect", function (packet) {
-    // acknowledge the connect packet
+    // Store client information in the clients map
+    clients.set(client.options.clientId, client);
+    // Send 'connack' packet to acknowledge the client
     client.connack({ returnCode: 0 });
   });
 
-  // client published
+  // Handle MQTT 'publish' event
   client.on("publish", function (packet) {
-    console.log("Received message:");
-    console.log("Topic:", packet.topic);
-    console.log("Payload:", packet.payload.toString());
-    // send a puback with messageId (for QoS > 0)
-    if (packet.qos > 0) {
-      client.puback({ messageId: packet.messageId });
-    }
+    // Publish the received message to subscribed clients
+
+    clients.forEach((client) => {
+      // Check if the client is subscribed to the message topic
+      const isSubscribed = client.subscriptions.some(
+        (subscription) => subscription.topic === packet.topic
+      );
+
+      if (isSubscribed) {
+        client.publish(packet);
+      }
+    });
   });
 
-  // client pinged
+  // Handle MQTT 'subscribe' event
+  client.on("subscribe", function (packet) {
+    // Store the subscription information for the client
+    client.subscriptions = packet.subscriptions;
+    client.suback({
+      granted: packet.subscriptions.map(() => 0),
+      messageId: packet.messageId,
+    });
+  });
+
+  // Handle MQTT 'unsubscribe' event
+  client.on("unsubscribe", function (packet) {
+    // Remove the subscription for the client
+    client.subscriptions = [];
+    client.unsuback({ messageId: packet.messageId });
+  });
+
+  // Handle MQTT 'pingreq' event
   client.on("pingreq", function () {
-    // send a pingresp
+    // Respond to the client with a 'pingresp' packet
     client.pingresp();
   });
 
-  // client subscribed
-  client.on("subscribe", function (packet) {
-    // send a suback with messageId and granted QoS level
-    client.suback({ granted: [packet.qos], messageId: packet.messageId });
-  });
-
-  // timeout idle streams after 5 minutes
-  stream.setTimeout(1000 * 60 * 5);
-
-  // connection error handling
-  client.on("close", function () {
-    client.destroy();
-  });
-  client.on("error", function () {
-    client.destroy();
-  });
+  // Handle MQTT 'disconnect' event
   client.on("disconnect", function () {
+    // Clean up client resources
+    clients.delete(client.clientId);
     client.destroy();
   });
 
-  // stream timeout
+  // Handle stream timeout
   stream.on("timeout", function () {
+    client.destroy();
+  });
+
+  // Handle stream error
+  client.on("error", function () {
     client.destroy();
   });
 });
 
-// listen on port 1883
-
-server.listen(1883);
+// Start listening on port 1883
+server.listen(1883, function () {
+  console.log("MQTT broker listening on port 1883");
+});
