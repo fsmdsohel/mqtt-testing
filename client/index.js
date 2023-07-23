@@ -3,7 +3,13 @@ const app = express();
 const port = 5000;
 
 const mqtt = require("mqtt");
-const client = mqtt.connect("mqtt://localhost:1883"); // Replace with your broker's address
+
+const mqttOptions = {
+  username: "admin", // Replace with your MQTT username
+  password: "admin", // Replace with your MQTT password
+};
+
+const client = mqtt.connect("mqtt://localhost:1883", mqttOptions); // Replace with your broker's address
 
 client.on("connect", () => {
   console.log("Connected to MQTT broker");
