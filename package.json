@@ -5,7 +5,8 @@
   "main": "",
   "scripts": {
     "start-server": "cd server && nodemon index.js",
-    "start-client": "cd client && nodemon index.js"
+    "start-client": "cd client && nodemon index.js",
+    "start-client2": "cd client2 && nodemon index.js"
   },
   "author": "SohelR",
   "license": "ISC",

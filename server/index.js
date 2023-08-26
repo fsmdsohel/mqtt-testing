@@ -21,10 +21,10 @@ server.on("connection", function (stream) {
       // Store client information in the clients map
       clients.set(client.options.clientId, client);
       // Send 'connack' packet to acknowledge the client
-      client.connack({ returnCode: 0 });
+      client.connack({returnCode: 0});
     } else {
       // Send 'connack' packet with a failure return code (e.g., 4: Bad username or password)
-      client.connack({ returnCode: 4 });
+      client.connack({returnCode: 4});
       client.destroy(); // Disconnect the client
     }
   });
@@ -35,7 +35,7 @@ server.on("connection", function (stream) {
 
     clients.forEach((client) => {
       // Check if the client is subscribed to the message topic
-      const isSubscribed = client.subscriptions.some(
+      const isSubscribed = client.subscriptions?.some(
         (subscription) => subscription.topic === packet.topic
       );
 
@@ -59,7 +59,7 @@ server.on("connection", function (stream) {
   client.on("unsubscribe", function (packet) {
     // Remove the subscription for the client
     client.subscriptions = [];
-    client.unsuback({ messageId: packet.messageId });
+    client.unsuback({messageId: packet.messageId});
   });
 
   // Handle MQTT 'pingreq' event
